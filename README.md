@@ -1,5 +1,5 @@
 
 ```bash
-git clone <this repo>
+git clone https://github.com/Hyun-Research-Lab/hyunlabutils.git
 pip install -e hyunlabutils
 ```
