@@ -4,42 +4,91 @@ from cflib.crazyflie.swarm import CachedCfFactory, Swarm
 
 class CrazySAR(Swarm):
 
-    def __init__(self, uris, graph: dict):
+    def __init__(self, uris, graph: list, rods: list):
         super().__init__(uris, CachedCfFactory(rw_cache='./cache'))
         
-        self._graph = graph
+        self.graph = graph
+        self.rods = rods
 
-        leader_uri = self._find_key(self._graph, [0, 0])
+        leader_uri = f"radio://0/80/2M/E7E7E7E7{self._find_leader():02d}"
         self.leader: Crazyflie = self._cfs[leader_uri].cf
 
-    def set_graph(self, graph: dict):
-        """
-        Set a new graph for the swarm and update the leader.
-        """
-        self._graph = graph
-
-        leader_uri = self._find_key(self._graph, [0, 0])
-        self.leader = self._cfs[leader_uri].cf
-
-    def send_graph(self, graph: dict = None):
+    def send_graph(self):
         """
         Send the current graph to all Crazyflies in the swarm.
-        If a new graph is provided, update the swarm's graph before sending.
         """
-        if graph is not None:
-            self.set_graph(graph)
+        for i, (node, parent) in enumerate(self.graph):
+            cf: Crazyflie = self._cfs[f"radio://0/80/2M/E7E7E7E7{node:02d}"].cf
+            cf.param.set_value('ctrlLee2.node', node)
+            cf.param.set_value('ctrlLee2.parent', parent)
 
-        self.parallel_safe(self._set_node_parent, args_dict=self._graph)
-        # self.parallel_safe(lambda scf: scf.cf.commander.send_notify_setpoint_stop())
+            cf.param.set_value('ctrlLee2.rod_x', self.rods[i][0])
+            cf.param.set_value('ctrlLee2.rod_y', self.rods[i][1])
+            cf.param.set_value('ctrlLee2.rod_z', self.rods[i][2])
 
-    @staticmethod
-    def _find_key(my_dict: dict, value_to_find):
-        for key, value in my_dict.items():
-            if value == value_to_find:
-                return key
+    def set_leader(self, leader_node: int):
+        """
+        Set a new leader and update the graph accordingly.
+        """
+        prev_leader_node = self._find_leader()
 
-    @staticmethod
-    def _set_node_parent(scf: SyncCrazyflie, node: int, parent: int):
-        cf = scf.cf
-        cf.param.set_value('ctrlLee2.node', node)
-        cf.param.set_value('ctrlLee2.parent', parent)
+        if leader_node == prev_leader_node:
+            return
+        
+        temp1 = self._get_parent(leader_node)
+        self._set_parent(leader_node, leader_node) # New leader points to itself
+
+        temp2 = self._get_parent(temp1)
+        self._set_parent(temp1, leader_node)
+
+        temp_rod1 = self._get_rod(temp1)
+        self._set_and_flip_rod(temp1, self._get_rod(leader_node))
+
+        temp3 = 0
+        temp_rod2 = [0, 0, 0]
+
+        while temp1 != prev_leader_node:
+            temp3 = self._get_parent(temp2)
+            self._set_parent(temp2, temp1)
+
+            temp_rod2 = self._get_rod(temp2)
+            self._set_and_flip_rod(temp2, temp_rod1)
+            temp_rod1 = temp_rod2
+
+            temp1 = temp2
+            temp2 = temp3
+
+        leader_uri = f"radio://0/80/2M/E7E7E7E7{self._find_leader():02d}"
+        self.leader: Crazyflie = self._cfs[leader_uri].cf
+
+        print(self.graph)
+        print(self.rods)
+
+        self.send_graph()
+
+    def _find_leader(self):
+        for node, parent in self.graph:
+            if node == parent:
+                return node
+            
+    def _get_parent(self, node: int):
+        for n, parent in self.graph:
+            if n == node:
+                return parent
+    
+    def _set_parent(self, node: int, new_parent: int):
+        for i, (n, parent) in enumerate(self.graph):
+            if n == node:
+                self.graph[i][1] = new_parent
+                return
+    
+    def _get_rod(self, node: int):
+        for i, (n, parent) in enumerate(self.graph):
+            if n == node:
+                return self.rods[i]
+    
+    def _set_and_flip_rod(self, node: int, new_rod: list):
+        for i, (n, parent) in enumerate(self.graph):
+            if n == node:
+                self.rods[i] = [-x for x in new_rod]
+                return
