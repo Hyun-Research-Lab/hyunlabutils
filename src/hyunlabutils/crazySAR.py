@@ -4,11 +4,12 @@ from cflib.crazyflie.swarm import CachedCfFactory, Swarm
 
 class CrazySAR(Swarm):
 
-    def __init__(self, uris, graph: list, rods: list):
+    def __init__(self, uris, graph: list, rods: list, flap_params: list):
         super().__init__(uris, CachedCfFactory(rw_cache='./cache'))
         
         self.graph = graph
         self.rods = rods
+        self.flap_params = flap_params
 
         leader_uri = f"radio://0/80/2M/E7E7E7E7{self._find_leader():02d}"
         self.leader: Crazyflie = self._cfs[leader_uri].cf
@@ -25,6 +26,10 @@ class CrazySAR(Swarm):
             cf.param.set_value('ctrlLee2.rod_x', self.rods[i][0])
             cf.param.set_value('ctrlLee2.rod_y', self.rods[i][1])
             cf.param.set_value('ctrlLee2.rod_z', self.rods[i][2])
+
+            cf.param.set_value('ctrlLee2.flap_freq', self.flap_params[i][0])
+            cf.param.set_value('ctrlLee2.flap_amp', self.flap_params[i][1])
+            cf.param.set_value('ctrlLee2.flap_phase', self.flap_params[i][2])
 
     def set_leader(self, leader_node: int):
         """
@@ -44,6 +49,9 @@ class CrazySAR(Swarm):
         temp_rod1 = self._get_rod(temp1)
         self._set_and_flip_rod(temp1, self._get_rod(leader_node))
 
+        temp_flap_params1 = self._get_flap_params(temp1)
+        self._set_and_flip_flap_params(temp1, self._get_flap_params(leader_node))
+
         temp3 = 0
         temp_rod2 = [0, 0, 0]
 
@@ -54,6 +62,10 @@ class CrazySAR(Swarm):
             temp_rod2 = self._get_rod(temp2)
             self._set_and_flip_rod(temp2, temp_rod1)
             temp_rod1 = temp_rod2
+
+            temp_flap_params2 = self._get_flap_params(temp2)
+            self._set_and_flip_flap_params(temp2, temp_flap_params1)
+            temp_flap_params1 = temp_flap_params2
 
             temp1 = temp2
             temp2 = temp3
@@ -91,4 +103,15 @@ class CrazySAR(Swarm):
         for i, (n, parent) in enumerate(self.graph):
             if n == node:
                 self.rods[i] = [-x for x in new_rod]
+                return
+
+    def _get_flap_params(self, node: int):
+        for i, (n, parent) in enumerate(self.graph):
+            if n == node:
+                return self.flap_params[i]
+    
+    def _set_and_flip_flap_params(self, node: int, new_flap_params: list):
+        for i, (n, parent) in enumerate(self.graph):
+            if n == node:
+                self.flap_params[i] = [new_flap_params[0], -new_flap_params[1], new_flap_params[2]]
                 return
