@@ -78,6 +78,17 @@ class CrazySAR(Swarm):
 
         self.send_graph()
 
+    def set_root(self, root_node: int):
+        """
+        Set a crazyflie to be a root and split away.
+        """
+        root_uri = f"radio://0/80/2M/E7E7E7E7{root_node:02d}"
+        root_cf: Crazyflie = self._cfs[root_uri].cf
+        root_cf.param.set_value('ctrlLee2.is_root', 1)
+
+        root_cf.commander.send_notify_setpoint_stop()
+        root_cf.high_level_commander.go_to(0, 0, 0, 0, 0, relative=True)
+
     def _find_leader(self):
         for node, parent in self.graph:
             if node == parent:
