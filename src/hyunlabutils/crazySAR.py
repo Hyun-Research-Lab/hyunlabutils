@@ -4,6 +4,10 @@ from cflib.crazyflie.swarm import CachedCfFactory, Swarm
 
 class CrazySAR(Swarm):
 
+    LED_LEADER =   0b10110101 # red and blue
+    LED_ROOT =     0b10101011 # green and blue
+    LED_FOLLOWER = 0b10000000 # all off
+
     def __init__(self, uris, graph: list, rods: list, flap_params: list):
         super().__init__(uris, CachedCfFactory(rw_cache='./cache'))
         
@@ -20,16 +24,21 @@ class CrazySAR(Swarm):
         """
         for i, (node, parent) in enumerate(self.graph):
             cf: Crazyflie = self._cfs[f"radio://0/80/2M/E7E7E7E7{node:02d}"].cf
-            cf.param.set_value('ctrlLee2.node', node)
-            cf.param.set_value('ctrlLee2.parent', parent)
+            cf.param.set_value('crazysar.node', node)
+            cf.param.set_value('crazysar.parent', parent)
 
-            cf.param.set_value('ctrlLee2.rod_x', self.rods[i][0])
-            cf.param.set_value('ctrlLee2.rod_y', self.rods[i][1])
-            cf.param.set_value('ctrlLee2.rod_z', self.rods[i][2])
+            cf.param.set_value('crazysar.rod_x', self.rods[i][0])
+            cf.param.set_value('crazysar.rod_y', self.rods[i][1])
+            cf.param.set_value('crazysar.rod_z', self.rods[i][2])
 
-            cf.param.set_value('ctrlLee2.flap_freq', self.flap_params[i][0])
-            cf.param.set_value('ctrlLee2.flap_amp', self.flap_params[i][1])
-            cf.param.set_value('ctrlLee2.flap_phase', self.flap_params[i][2])
+            cf.param.set_value('crazysar.flap_freq', self.flap_params[i][0])
+            cf.param.set_value('crazysar.flap_amp', self.flap_params[i][1])
+            cf.param.set_value('crazysar.flap_phase', self.flap_params[i][2])
+
+            if node == parent:
+                cf.param.set_value('led.bitmask', self.LED_LEADER)
+            else:
+                cf.param.set_value('led.bitmask', self.LED_FOLLOWER)
 
     def set_leader(self, leader_node: int):
         """
@@ -84,7 +93,8 @@ class CrazySAR(Swarm):
         """
         root_uri = f"radio://0/80/2M/E7E7E7E7{root_node:02d}"
         root_cf: Crazyflie = self._cfs[root_uri].cf
-        root_cf.param.set_value('ctrlLee2.is_root', 1)
+        root_cf.param.set_value('crazysar.is_root', 1)
+        root_cf.param.set_value('led.bitmask', self.LED_ROOT)
 
         root_cf.commander.send_notify_setpoint_stop()
         root_cf.high_level_commander.go_to(0, 0, 0, 0, 0, relative=True)
