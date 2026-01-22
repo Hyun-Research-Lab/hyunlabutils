@@ -82,22 +82,21 @@ class CrazySAR(Swarm):
         leader_uri = f"radio://0/80/2M/E7E7E7E7{self._find_leader():02d}"
         self.leader: Crazyflie = self._cfs[leader_uri].cf
 
-        print(self.graph)
-        print(self.rods)
-
         self.send_graph()
 
     def set_root(self, root_node: int):
         """
-        Set a crazyflie to be a root and split away.
+        Toggle a crazyflie to be a root node and allow it to split away.
         """
         root_uri = f"radio://0/80/2M/E7E7E7E7{root_node:02d}"
         root_cf: Crazyflie = self._cfs[root_uri].cf
-        root_cf.param.set_value('crazysar.is_root', 1)
-        root_cf.param.set_value('led.bitmask', self.LED_ROOT)
 
-        root_cf.commander.send_notify_setpoint_stop()
-        root_cf.high_level_commander.go_to(0, 0, 0, 0, 0, relative=True)
+        if int(root_cf.param.get_value('crazysar.is_root')) == 0:
+            root_cf.param.set_value('crazysar.is_root', 1)
+            root_cf.param.set_value('led.bitmask', self.LED_ROOT)
+        else:
+            root_cf.param.set_value('crazysar.is_root', 0)
+            root_cf.param.set_value('led.bitmask', self.LED_FOLLOWER)
 
     def _find_leader(self):
         for node, parent in self.graph:
