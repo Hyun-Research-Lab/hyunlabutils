@@ -1,3 +1,5 @@
+import numpy as np
+
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.swarm import CachedCfFactory, Swarm
@@ -24,12 +26,16 @@ class CrazySAR(Swarm):
         """
         for i, (node, parent) in enumerate(self.graph):
             cf: Crazyflie = self._cfs[f"radio://0/80/2M/E7E7E7E7{node:02d}"].cf
-            cf.param.set_value('crazysar.node', node)
-            cf.param.set_value('crazysar.parent', parent)
 
-            cf.param.set_value('crazysar.rod_x', self.rods[i][0])
-            cf.param.set_value('crazysar.rod_y', self.rods[i][1])
-            cf.param.set_value('crazysar.rod_z', self.rods[i][2])
+            config_params = np.uint32(
+                (np.uint8(node) & 0x0F) |
+                ((np.uint8(parent) & 0x0F) << 4) |
+                ((np.int8(self.rods[i][0]) & 0xFF) << 8) |
+                ((np.int8(self.rods[i][1]) & 0xFF) << 16) |
+                ((np.int8(self.rods[i][2]) & 0xFF) << 24)
+            )
+
+            cf.param.set_value('crazysar.config_params', config_params)
 
             cf.param.set_value('crazysar.flap_freq', self.flap_params[i][0])
             cf.param.set_value('crazysar.flap_amp', self.flap_params[i][1])
