@@ -6,10 +6,6 @@ from cflib.crazyflie.swarm import CachedCfFactory, Swarm
 
 class CrazySAR(Swarm):
 
-    LED_LEADER =   0b10110101 # red and blue
-    LED_ROOT =     0b10101011 # green and blue
-    LED_FOLLOWER = 0b10000000 # all off
-
     def __init__(self, uris, graph: list, rods: list, flap_params: list):
         super().__init__(uris, CachedCfFactory(rw_cache='./cache'))
         
@@ -17,16 +13,26 @@ class CrazySAR(Swarm):
         self.rods = rods
         self.flap_params = flap_params
 
-        leader_uri = f"radio://0/80/2M/E7E7E7E7{self._find_leader():02d}"
+        leader_uri = self.node2uri(self._find_leader())
         self.leader: Crazyflie = self._cfs[leader_uri].cf
 
+    @staticmethod
+    def _send_graph(scf: SyncCrazyflie, config_params, flap_params):
+        cf = scf.cf
+
+        cf.param.set_value('crazysar.config_params', config_params)
+
+        cf.param.set_value('crazysar.flap_freq', flap_params[0])
+        cf.param.set_value('crazysar.flap_amp', flap_params[1])
+        cf.param.set_value('crazysar.flap_phase', flap_params[2])
+    
     def send_graph(self):
         """
         Send the current graph to all Crazyflies in the swarm.
         """
+        send_graph_dict = dict()
+        
         for i, (node, parent) in enumerate(self.graph):
-            cf: Crazyflie = self._cfs[f"radio://0/80/2M/E7E7E7E7{node:02d}"].cf
-
             config_params = np.uint32(
                 (np.uint8(node) & 0x0F) |
                 ((np.uint8(parent) & 0x0F) << 4) |
@@ -34,17 +40,11 @@ class CrazySAR(Swarm):
                 ((np.int8(self.rods[i][1]) & 0xFF) << 16) |
                 ((np.int8(self.rods[i][2]) & 0xFF) << 24)
             )
-
-            cf.param.set_value('crazysar.config_params', config_params)
-
-            cf.param.set_value('crazysar.flap_freq', self.flap_params[i][0])
-            cf.param.set_value('crazysar.flap_amp', self.flap_params[i][1])
-            cf.param.set_value('crazysar.flap_phase', self.flap_params[i][2])
-
-            if node == parent:
-                cf.param.set_value('led.bitmask', self.LED_LEADER)
-            else:
-                cf.param.set_value('led.bitmask', self.LED_FOLLOWER)
+            flap_params = self.flap_params[i]
+            
+            send_graph_dict[self.node2uri(node)] = [config_params, flap_params]
+            
+        self.parallel_safe(CrazySAR._send_graph, args_dict=send_graph_dict)
 
     def set_leader(self, leader_node: int):
         """
@@ -85,7 +85,7 @@ class CrazySAR(Swarm):
             temp1 = temp2
             temp2 = temp3
 
-        leader_uri = f"radio://0/80/2M/E7E7E7E7{self._find_leader():02d}"
+        leader_uri = self.node2uri(self._find_leader())
         self.leader: Crazyflie = self._cfs[leader_uri].cf
 
         self.send_graph()
@@ -94,15 +94,12 @@ class CrazySAR(Swarm):
         """
         Toggle a crazyflie to be a root node and allow it to split away.
         """
-        root_uri = f"radio://0/80/2M/E7E7E7E7{root_node:02d}"
-        root_cf: Crazyflie = self._cfs[root_uri].cf
+        root_cf: Crazyflie = self._cfs[self.node2uri(root_node)].cf
 
         if int(root_cf.param.get_value('crazysar.is_root')) == 0:
             root_cf.param.set_value('crazysar.is_root', 1)
-            root_cf.param.set_value('led.bitmask', self.LED_ROOT)
         else:
             root_cf.param.set_value('crazysar.is_root', 0)
-            root_cf.param.set_value('led.bitmask', self.LED_FOLLOWER)
 
     def _find_leader(self):
         for node, parent in self.graph:
@@ -141,3 +138,12 @@ class CrazySAR(Swarm):
             if n == node:
                 self.flap_params[i] = [new_flap_params[0], -new_flap_params[1], new_flap_params[2]]
                 return
+
+    @staticmethod
+    def node2uri(node: int):
+        return f"radio://0/80/2M/E7E7E7E7{node:02d}"
+
+    @staticmethod
+    def uri2nodestr(uri: str):
+        # return uri[-17:-15]
+        return uri.split('E7E7E7E7')[-1][:2]
