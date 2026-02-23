@@ -1,6 +1,7 @@
 import json
 import time
 import csv
+import os
 import numpy as np
 
 from cflib.crazyflie import Crazyflie
@@ -41,6 +42,13 @@ class CrazySAR(Swarm):
         self.writer = dict()
         self.logconf = dict()
 
+        # Create folder for logs
+        i = 0
+        while os.path.exists(f'crazySAR/data{i:02d}'):
+            i += 1
+        self.prefix = f'crazySAR/data{i:02d}'
+        os.makedirs(self.prefix, exist_ok=False)
+
     def __enter__(self):
         # Open links
         super().__enter__()
@@ -53,7 +61,7 @@ class CrazySAR(Swarm):
 
         # Initialize loggers
         for uri in self.uris:
-            self.file[uri] = open(f'crazySAR/data/log{CrazySAR.uri2nodestr(uri)}.csv', 'w', newline='')
+            self.file[uri] = open(f'{self.prefix}/log{CrazySAR.uri2nodestr(uri)}.csv', 'w', newline='')
             self.writer[uri] = csv.writer(self.file[uri])
             self.writer[uri].writerow(self.log_vars.keys())
 
@@ -83,10 +91,13 @@ class CrazySAR(Swarm):
         time.sleep(1)
         self.parallel_safe(print_vbat)
 
+        os.chmod(self.prefix, 0o777)
         for uri in self.uris:
             self.logconf[uri].stop()
             time.sleep(0.1)
             self.file[uri].close()
+
+            os.chmod(f'{self.prefix}/log{CrazySAR.uri2nodestr(uri)}.csv', 0o666)
 
         # Close links
         super().__exit__(exc_type, exc_val, exc_tb)
