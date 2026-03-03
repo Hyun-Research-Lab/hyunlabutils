@@ -152,8 +152,7 @@ class CrazySAR(Swarm):
         
         for i, (node, parent) in enumerate(self.graph):
             config_params = np.uint32(
-                (np.uint8(node) & 0x0F) |
-                ((np.uint8(parent) & 0x0F) << 4) |
+                (np.uint8(parent) & 0xFF) |
                 ((np.int8(self.rods[i][0]) & 0xFF) << 8) |
                 ((np.int8(self.rods[i][1]) & 0xFF) << 16) |
                 ((np.int8(self.rods[i][2]) & 0xFF) << 24)
