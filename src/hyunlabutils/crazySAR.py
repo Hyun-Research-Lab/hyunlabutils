@@ -22,7 +22,7 @@ class CrazySAR(Swarm):
         self.graph = config["graph"]
         self.rods = config["rods"]
         self.flap_params = config["flap_params"]
-        self.disabled = config["disabled"]
+        self.deactivated = config["deactivated"]
 
         # Initialize the set of URIs and dict of mocap threads
         self.uris = set()
@@ -123,10 +123,10 @@ class CrazySAR(Swarm):
         # cf.param.set_value('crazysar.flap_amp', np.pi/8)
         # cf.param.set_value('crazysar.flap_phase', -0.2)
 
-        if int(CrazySAR.uri2nodestr(cf.link_uri)) in self.disabled:
-            cf.param.set_value('crazysar.disable_props', 1)
+        if int(CrazySAR.uri2nodestr(cf.link_uri)) in self.deactivated:
+            cf.param.set_value('crazysar.deactivated', 1)
         else:
-            cf.param.set_value('crazysar.disable_props', 0)
+            cf.param.set_value('crazysar.deactivated', 0)
 
         reset_estimator(cf)
 
