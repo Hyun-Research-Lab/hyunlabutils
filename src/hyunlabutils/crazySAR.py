@@ -44,9 +44,9 @@ class CrazySAR(Swarm):
 
         # Create folder for logs
         i = 0
-        while os.path.exists(f'crazySAR/data{i:02d}'):
+        while os.path.exists(f'crazySAR/data/data{i:02d}'):
             i += 1
-        self.prefix = f'crazySAR/data{i:02d}'
+        self.prefix = f'crazySAR/data/data{i:02d}'
         os.makedirs(self.prefix, exist_ok=False)
 
     def __enter__(self):
