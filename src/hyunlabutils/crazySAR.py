@@ -15,7 +15,7 @@ from hyunlabutils.mocap_thread import MocapThread
 
 class CrazySAR(Swarm):
 
-    def __init__(self, config_filename: str, log_vars: dict, mocap_system_type = 'vicon', host_name = '192.168.1.115'):
+    def __init__(self, config_filename: str, log_vars: dict, mocap_system_type = 'vicon', host_name = '192.168.1.115', log_name = None):
         # Get graph from JSON file
         with open(f"crazySAR/configs/{config_filename}.json", "r") as f:
             config = json.load(f)
@@ -43,10 +43,14 @@ class CrazySAR(Swarm):
         self.logconf = dict()
 
         # Create folder for logs
-        i = 0
-        while os.path.exists(f'crazySAR/data/data{i:02d}'):
-            i += 1
-        self.prefix = f'crazySAR/data/data{i:02d}'
+        self.prefix = ''
+        if log_name is None:
+            i = 0
+            while os.path.exists(f'crazySAR/data/data{i:02d}'):
+                i += 1
+            self.prefix = f'crazySAR/data/data{i:02d}'
+        else:
+            self.prefix = f'crazySAR/data/{log_name}'
         os.makedirs(self.prefix, exist_ok=False)
 
     def __enter__(self):
