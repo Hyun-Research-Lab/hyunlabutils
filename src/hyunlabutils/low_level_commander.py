@@ -31,10 +31,13 @@ class LLComm():
     def go_to_first_order(cf: Crazyflie, x_desired: float, y_desired: float, z_desired: float, yaw_desired: float, duration_s: float):
         position_current = LLComm._get_position(cf)
         position_desired = np.array([x_desired, y_desired, z_desired])
+        vector = position_desired - position_current
 
         for update_idx in range(duration_s * LLComm.UPDATES_PER_SECOND):
-            velocity = (position_desired - position_current) / duration_s
-            position = position_current + velocity * update_idx / LLComm.UPDATES_PER_SECOND
+            time_norm = update_idx / (duration_s * LLComm.UPDATES_PER_SECOND) # Fraction of total duration that has elapsed
+
+            position = position_current + vector * time_norm
+            velocity = vector / duration_s
 
             cf.commander.send_full_state_setpoint(
                 pos=position,
@@ -42,7 +45,32 @@ class LLComm():
                 acc=np.zeros(3),
                 orientation=np.array([0, 0, 0, 1]),
                 rollrate=0, pitchrate=0, yawrate=0)
-            
+
+            time.sleep(1 / LLComm.UPDATES_PER_SECOND)
+
+    @staticmethod
+    def go_to_third_order(cf: Crazyflie, x_desired: float, y_desired: float, z_desired: float, yaw_desired: float, duration_s: float):
+        position_current = LLComm._get_position(cf)
+        position_desired = np.array([x_desired, y_desired, z_desired])
+        vector = position_desired - position_current
+
+        for update_idx in range(duration_s * LLComm.UPDATES_PER_SECOND):
+            time_norm = update_idx / (duration_s * LLComm.UPDATES_PER_SECOND) # Fraction of total duration that has elapsed
+
+            position = position_current - 2 * vector * time_norm ** 2 * (time_norm - 1.5)
+            velocity = -6 * vector * time_norm * (time_norm - 1)
+            acceleration = -6 * vector * (2 * time_norm - 1)
+
+            # Currently there is an issue with velocity and acceleration being too high
+            cf.commander.send_full_state_setpoint(
+                pos=position,
+                # vel=velocity,
+                vel=np.zeros(3),
+                # acc=acceleration,
+                acc=np.zeros(3),
+                orientation=np.array([0, 0, 0, 1]),
+                rollrate=0, pitchrate=0, yawrate=0)
+
             time.sleep(1 / LLComm.UPDATES_PER_SECOND)
 
     @staticmethod
