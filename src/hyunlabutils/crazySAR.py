@@ -15,6 +15,8 @@ from hyunlabutils.mocap_thread import MocapThread
 
 class CrazySAR(Swarm):
 
+    ROD_LENGTH = 0.37
+    
     def __init__(self, config_filename: str, log_vars: dict, mocap_system_type = 'vicon', host_name = '192.168.1.115', log_name = None):
         # Get graph from JSON file
         with open(f"crazySAR/configs/{config_filename}.json", "r") as f:
