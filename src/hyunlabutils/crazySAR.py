@@ -1,8 +1,10 @@
 import json
+import sys
 import time
 import csv
 import os
 import numpy as np
+import datetime
 
 from cflib.crazyflie import Crazyflie
 from cflib.utils.reset_estimator import reset_estimator
@@ -54,6 +56,12 @@ class CrazySAR(Swarm):
         else:
             self.prefix = f'crazySAR/data/{log_name}'
         os.makedirs(self.prefix, exist_ok=False)
+
+        # Add a metadata file
+        with open(f'{self.prefix}/metadata.txt', 'w') as f:
+            f.write(f'Timestamp: {datetime.datetime.now()}\n')
+            f.write(f'Config: {config_filename}\n')
+            f.write(f'Script: {sys.argv[0]}\n')
 
     def __enter__(self):
         # Open links
