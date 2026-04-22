@@ -34,7 +34,7 @@ class CrazySAR(Swarm):
         for node, parent in self.graph:
             uri = CrazySAR.node2uri(node)
             self.uris.add(uri)
-            self.mocap_threads[uri] = [MocapThread(mocap_system_type, host_name, f'cf{node:02d}', log_file_name=f'cf{node:02d}')]
+            self.mocap_threads[uri] = [MocapThread(mocap_system_type, host_name, f'cf{node:02d}')]
 
         super().__init__(self.uris, CachedCfFactory(rw_cache='./cache'))
 
