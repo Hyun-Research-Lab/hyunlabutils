@@ -62,6 +62,7 @@ class CrazySAR(Swarm):
             f.write(f'Timestamp: {datetime.datetime.now()}\n')
             f.write(f'Config: {config_filename}\n')
             f.write(f'Script: {sys.argv[0]}\n')
+            f.write(f'Video:')
 
     def __enter__(self):
         # Open links

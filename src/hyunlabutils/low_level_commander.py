@@ -7,7 +7,7 @@ from cflib.crazyflie.syncLogger import SyncLogger
 
 class LLComm():
 
-    UPDATES_PER_SECOND = 100
+    UPDATE_PERIOD = 0.1
     
     @staticmethod
     def _get_position(cf: Crazyflie):
@@ -28,13 +28,20 @@ class LLComm():
         return position
 
     @staticmethod
-    def go_to_first_order(cf: Crazyflie, x_desired: float, y_desired: float, z_desired: float, yaw_desired: float, duration_s: float):
+    def go_to_first_order(cf: Crazyflie, x_desired: float, y_desired: float, z_desired: float, yaw_desired: float, duration_s: float, relative: bool = False):
+        t_start = time.perf_counter()
+        
         position_current = LLComm._get_position(cf)
         position_desired = np.array([x_desired, y_desired, z_desired])
+        if relative:
+            position_desired += position_current
         vector = position_desired - position_current
 
-        for update_idx in range(duration_s * LLComm.UPDATES_PER_SECOND):
-            time_norm = update_idx / (duration_s * LLComm.UPDATES_PER_SECOND) # Fraction of total duration that has elapsed
+        for update_idx in range(int(duration_s / LLComm.UPDATE_PERIOD)):
+            while time.perf_counter() - t_start < update_idx * LLComm.UPDATE_PERIOD:
+                time.sleep(LLComm.UPDATE_PERIOD / 100)
+
+            time_norm = update_idx * LLComm.UPDATE_PERIOD / duration_s # Fraction of total duration that has elapsed
 
             position = position_current + vector * time_norm
             velocity = vector / duration_s
@@ -46,7 +53,9 @@ class LLComm():
                 orientation=np.array([0, 0, 0, 1]),
                 rollrate=0, pitchrate=0, yawrate=0)
 
-            time.sleep(1 / LLComm.UPDATES_PER_SECOND)
+        # Only return once time has reached duration_s
+        while time.perf_counter() - t_start < duration_s:
+            time.sleep(LLComm.UPDATE_PERIOD / 100)
 
     @staticmethod
     def go_to_third_order(cf: Crazyflie, x_desired: float, y_desired: float, z_desired: float, yaw_desired: float, duration_s: float):
@@ -54,8 +63,8 @@ class LLComm():
         position_desired = np.array([x_desired, y_desired, z_desired])
         vector = position_desired - position_current
 
-        for update_idx in range(duration_s * LLComm.UPDATES_PER_SECOND):
-            time_norm = update_idx / (duration_s * LLComm.UPDATES_PER_SECOND) # Fraction of total duration that has elapsed
+        for update_idx in range(int(duration_s / LLComm.UPDATE_PERIOD)):
+            time_norm = update_idx * LLComm.UPDATE_PERIOD / duration_s # Fraction of total duration that has elapsed
 
             position = position_current - 2 * vector * time_norm ** 2 * (time_norm - 1.5)
             velocity = -6 * vector * time_norm * (time_norm - 1)
@@ -71,10 +80,16 @@ class LLComm():
                 orientation=np.array([0, 0, 0, 1]),
                 rollrate=0, pitchrate=0, yawrate=0)
 
-            time.sleep(1 / LLComm.UPDATES_PER_SECOND)
+            time.sleep(LLComm.UPDATE_PERIOD)
 
     @staticmethod
     def hover(cf: Crazyflie, x_desired: float, y_desired: float, z_desired: float, yaw_desired: float, duration_s: float):
-        for _ in range(duration_s * LLComm.UPDATES_PER_SECOND):
+        t_start = time.perf_counter()
+        
+        while time.perf_counter() - t_start < duration_s:
             cf.commander.send_position_setpoint(x_desired, y_desired, z_desired, yaw_desired)
-            time.sleep(1 / LLComm.UPDATES_PER_SECOND)
+            time.sleep(LLComm.UPDATE_PERIOD)
+    
+    @staticmethod
+    def takeoff(cf: Crazyflie, z_desired: float, duration_s: float):
+        LLComm.go_to_first_order(cf, 0, 0, 0.5, 0, duration_s, relative=True)
