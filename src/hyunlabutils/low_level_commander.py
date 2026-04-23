@@ -29,8 +29,6 @@ class LLComm():
 
     @staticmethod
     def go_to_first_order(cf: Crazyflie, x_desired: float, y_desired: float, z_desired: float, yaw_desired: float, duration_s: float, relative: bool = False):
-        t_start = time.perf_counter()
-        
         position_current = LLComm._get_position(cf)
         position_desired = np.array([x_desired, y_desired, z_desired])
         if relative:
@@ -38,9 +36,6 @@ class LLComm():
         vector = position_desired - position_current
 
         for update_idx in range(int(duration_s / LLComm.UPDATE_PERIOD)):
-            while time.perf_counter() - t_start < update_idx * LLComm.UPDATE_PERIOD:
-                time.sleep(LLComm.UPDATE_PERIOD / 100)
-
             time_norm = update_idx * LLComm.UPDATE_PERIOD / duration_s # Fraction of total duration that has elapsed
 
             position = position_current + vector * time_norm
@@ -53,9 +48,7 @@ class LLComm():
                 orientation=np.array([0, 0, 0, 1]),
                 rollrate=0, pitchrate=0, yawrate=0)
 
-        # Only return once time has reached duration_s
-        while time.perf_counter() - t_start < duration_s:
-            time.sleep(LLComm.UPDATE_PERIOD / 100)
+            time.sleep(LLComm.UPDATE_PERIOD)
 
     @staticmethod
     def go_to_third_order(cf: Crazyflie, x_desired: float, y_desired: float, z_desired: float, yaw_desired: float, duration_s: float):
@@ -92,4 +85,4 @@ class LLComm():
     
     @staticmethod
     def takeoff(cf: Crazyflie, z_desired: float, duration_s: float):
-        LLComm.go_to_first_order(cf, 0, 0, 0.5, 0, duration_s, relative=True)
+        LLComm.go_to_first_order(cf, 0, 0, z_desired, 0, duration_s, relative=True)
