@@ -28,24 +28,6 @@ class CrazySAR(Swarm):
         self.flap_params = config["flap_params"]
         self.deactivated = config["deactivated"]
 
-        # Initialize the set of URIs and dict of mocap threads
-        self.uris = set()
-        self.mocap_threads = dict()
-        for node, parent in self.graph:
-            uri = CrazySAR.node2uri(node)
-            self.uris.add(uri)
-            self.mocap_threads[uri] = [MocapThread(mocap_system_type, host_name, f'cf{node:02d}')]
-
-        super().__init__(self.uris, CachedCfFactory(rw_cache='./cache'))
-
-        leader_uri = self.node2uri(self._find_leader())
-        self.leader: Crazyflie = self._cfs[leader_uri].cf
-
-        self.log_vars = log_vars
-        self.file = dict()
-        self.writer = dict()
-        self.logconf = dict()
-
         # Create folder for logs
         self.prefix = ''
         if log_name is None:
@@ -62,7 +44,26 @@ class CrazySAR(Swarm):
             f.write(f'Timestamp: {datetime.datetime.now()}\n')
             f.write(f'Config: {config_filename}\n')
             f.write(f'Script: {sys.argv[0]}\n')
-            f.write(f'Video:')
+            f.write(f'Video:\n')
+            f.write(f'Notes:')
+
+        # Initialize the set of URIs and dict of mocap threads
+        self.uris = set()
+        self.mocap_threads = dict()
+        for node, parent in self.graph:
+            uri = CrazySAR.node2uri(node)
+            self.uris.add(uri)
+            self.mocap_threads[uri] = [MocapThread(mocap_system_type, host_name, f'cf{node:02d}', f'{self.prefix}/mocap{node:02d}')]
+
+        super().__init__(self.uris, CachedCfFactory(rw_cache='./cache'))
+
+        leader_uri = self.node2uri(self._find_leader())
+        self.leader: Crazyflie = self._cfs[leader_uri].cf
+
+        self.log_vars = log_vars
+        self.file = dict()
+        self.writer = dict()
+        self.logconf = dict()
 
     def __enter__(self):
         # Open links
@@ -155,7 +156,7 @@ class CrazySAR(Swarm):
 
         cf.param.set_value('crazysar.config_params', config_params)
 
-        cf.param.set_value('crazysar.flap_freq', flap_params[0])
+        cf.param.set_value('crazysar.flap_period', flap_params[0])
         cf.param.set_value('crazysar.flap_amp', flap_params[1])
         cf.param.set_value('crazysar.flap_phase', flap_params[2])
     
