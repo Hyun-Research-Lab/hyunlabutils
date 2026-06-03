@@ -29,14 +29,16 @@ class LLComm():
 
     @staticmethod
     def go_to_first_order(cf: Crazyflie, x_desired: float, y_desired: float, z_desired: float, yaw_desired: float, duration_s: float, relative: bool = False):
+        t_start = time.perf_counter()
+        
         position_current = LLComm._get_position(cf)
         position_desired = np.array([x_desired, y_desired, z_desired])
         if relative:
             position_desired += position_current
         vector = position_desired - position_current
 
-        for update_idx in range(int(duration_s / LLComm.UPDATE_PERIOD)):
-            time_norm = update_idx * LLComm.UPDATE_PERIOD / duration_s # Fraction of total duration that has elapsed
+        while time.perf_counter() - t_start < duration_s:            
+            time_norm = (time.perf_counter() - t_start) / duration_s # Fraction of total duration that has elapsed
 
             position = position_current + vector * time_norm
             velocity = vector / duration_s
