@@ -88,3 +88,32 @@ class LLComm():
     @staticmethod
     def takeoff(cf: Crazyflie, z_desired: float, duration_s: float):
         LLComm.go_to_first_order(cf, 0, 0, z_desired, 0, duration_s, relative=True)
+
+    @staticmethod
+    def spiral(cf: Crazyflie, x_center: float, y_center: float, z_center: float, radius: float, num_revs: float, duration_s: float):
+        t_start = time.perf_counter()
+
+        while time.perf_counter() - t_start < duration_s:
+            t = time.perf_counter() - t_start / duration_s
+            
+            position = np.array([
+                x_center + radius * t / duration_s * np.cos(2 * np.pi * num_revs * t / duration_s),
+                y_center + radius * t / duration_s * np.sin(2 * np.pi * num_revs * t / duration_s),
+                z_center
+            ])
+            velocity = np.array([
+                radius * t / duration_s * -2 * np.pi * num_revs * np.sin(2 * np.pi * num_revs * t / duration_s)
+                    + radius / duration_s * np.cos(2 * np.pi * num_revs * t / duration_s),
+                radius * t / duration_s * 2 * np.pi * num_revs * np.cos(2 * np.pi * num_revs * t / duration_s)
+                    - radius / duration_s * np.sin(2 * np.pi * num_revs * t / duration_s),
+                0
+            ])
+
+            cf.commander.send_full_state_setpoint(
+                pos=position,
+                vel=velocity,
+                acc=np.zeros(3),
+                orientation=np.array([0, 0, 0, 1]),
+                rollrate=0, pitchrate=0, yawrate=0)
+
+            time.sleep(LLComm.UPDATE_PERIOD)
