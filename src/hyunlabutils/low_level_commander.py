@@ -94,7 +94,7 @@ class LLComm():
         t_start = time.perf_counter()
 
         while time.perf_counter() - t_start < duration_s:
-            t = time.perf_counter() - t_start / duration_s
+            t = time.perf_counter() - t_start
             
             position = np.array([
                 x_center + radius * t / duration_s * np.cos(2 * np.pi * num_revs * t / duration_s),
@@ -102,10 +102,10 @@ class LLComm():
                 z_center
             ])
             velocity = np.array([
-                radius * t / duration_s * -2 * np.pi * num_revs * np.sin(2 * np.pi * num_revs * t / duration_s)
+                radius * t / duration_s * -2 * np.pi * num_revs / duration_s * np.sin(2 * np.pi * num_revs * t / duration_s)
                     + radius / duration_s * np.cos(2 * np.pi * num_revs * t / duration_s),
-                radius * t / duration_s * 2 * np.pi * num_revs * np.cos(2 * np.pi * num_revs * t / duration_s)
-                    - radius / duration_s * np.sin(2 * np.pi * num_revs * t / duration_s),
+                radius * t / duration_s * 2 * np.pi * num_revs / duration_s * np.cos(2 * np.pi * num_revs * t / duration_s)
+                    + radius / duration_s * np.sin(2 * np.pi * num_revs * t / duration_s),
                 0
             ])
 
